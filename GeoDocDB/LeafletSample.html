@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>Leaflet Web Map</title>
+
+    <!-- reference to Leaflet CSS -->
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+
+    <!-- reference to Leaflet JavaScript -->
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+    <!-- set width and height styles for map -->
+    <style>
+        #map {
+            width: 960px;
+            height: 500px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- place holder for map -->
+    <div id="map"></div>
+
+    <script>
+
+    // create map object, tell it to live in 'map' div and give initial latitude, longitude, zoom values
+    // pass option to turn scroll wheel zoom off
+        var map = L.map('map', { scrollWheelZoom: false }).setView([17.3922768, 78.3668208], 15);
+
+    // add base map tiles from OpenStreetMap and attribution info to 'map' div
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    var pathValues = [
+                [17.3922768, 78.3668208],
+[17.3924454, 78.3668189],
+[17.3925985, 78.366846],
+[17.3927388, 78.3668368],
+[17.3929122, 78.3668604],
+[17.3931091, 78.3668838],
+[17.3933239, 78.3669088],
+[17.393419, 78.3670412],
+[17.393371, 78.3674025],
+[17.3933277, 78.3678611],
+[17.3932865, 78.3682471],
+[17.3932609, 78.3684087],
+[17.3932784, 78.3684905],
+[17.3933626, 78.3685901],
+[17.3936539, 78.3686691],
+[17.394055, 78.3686884],
+[17.3944297, 78.3686818],
+[17.3948403, 78.3688321],
+[17.3952945, 78.3690131],
+[17.3958606, 78.3692167],
+[17.3963746, 78.3694004],
+[17.3965944, 78.3695697],
+[17.3966599, 78.3697778],
+[17.3965641, 78.370023],
+[17.3964627, 78.3703018],
+[17.3963613, 78.3706052],
+[17.3962776, 78.3708122],
+[17.3962111, 78.3710254],
+[17.39615, 78.3711995],
+[17.3960787, 78.3713583],
+[17.3960408, 78.3715187],
+[17.3959788, 78.3716903],
+[17.3959099, 78.3718795],
+[17.3958139, 78.3720571],
+[17.3957146, 78.3722786],
+[17.395614, 78.3724537],
+[17.3955043, 78.3726747],
+[17.3954091, 78.3728971],
+[17.395327, 78.3730921],
+[17.3952246, 78.3733086],
+[17.3951534, 78.3734216],
+[17.3953408, 78.3729528],
+[17.3954469, 78.3727624],
+[17.39554, 78.372539],
+[17.3956215, 78.372295],
+[17.3957519, 78.3720463],
+[17.3958577, 78.3717789],
+[17.3959693, 78.3715434],
+[17.3960404, 78.3713325],
+[17.3961057, 78.3711221],
+[17.396188, 78.3708956],
+[17.3962536, 78.3706849],
+[17.3963247, 78.3705013],
+[17.3964091, 78.3702469],
+[17.3965003, 78.3699776],
+[17.3965894, 78.3696977],
+[17.3964578, 78.3695192],
+[17.3960754, 78.3693889],
+[17.3955066, 78.3691696],
+[17.3949772, 78.3689964],
+[17.3946136, 78.3688919],
+[17.3946079, 78.3688789],
+[17.3946125, 78.3688652],
+[17.3946104, 78.3688624],
+[17.394612, 78.368859],
+[17.3946119, 78.368859],
+[17.3946117, 78.3688585],
+[17.3946111, 78.3688584],
+[17.3946108, 78.3688585],
+[17.3946101, 78.3688588],
+[17.39461, 78.3688589]
+
+    ];
+
+    pathValues = [];
+
+
+    
+
+
+
+
+    $.get('https://roads.googleapis.com/v1/snapToRoads', {
+        interpolate: false,
+        key: apiKey,
+        path: pathValues.join('|')
+    }, function (data) {
+        processSnapToRoadResponse(data);
+        //drawSnappedPolyline();
+        //getAndDrawSpeedLimits();
+        // add line from toUnion array points to map with some basic styling
+        L.polyline(toUnion, { color: 'red', opacity: 0.5 }).addTo(map);
+    });
+
+    var toUnion = [];
+
+    function processSnapToRoadResponse(data) {
+        snappedCoordinates = [];
+        placeIdArray = [];
+        for (var i = 0; i < data.snappedPoints.length; i++) {
+            var latlng = new google.maps.LatLng(
+                data.snappedPoints[i].location.latitude,
+                data.snappedPoints[i].location.longitude);
+            snappedCoordinates.push(latlng);
+            toUnion = snappedCoordinates;
+            //placeIdArray.push(data.snappedPoints[i].placeId);
+        }
+    }
+
+    // create array of points
+    
+
+
+   
+
+    </script>
+
+</body>
+
+</html>
