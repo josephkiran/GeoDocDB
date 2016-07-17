@@ -82,6 +82,7 @@
                     RunDemoAsync(DatabaseId, CollectionId).Wait();
                 }
 
+                Console.WriteLine("DONE");
                 Console.ReadLine();
             }
             catch (DocumentClientException de)
@@ -221,26 +222,27 @@
 
             //await Cleanup(collection);
 
-            var docs = await client.ReadDocumentFeedAsync(collection.SelfLink, new FeedOptions { MaxItemCount = 100 });
-            
-            int MAX_SKIP = 1;
+            var docs = await client.ReadDocumentFeedAsync(collection.SelfLink, new FeedOptions { MaxItemCount = 500 });
+
+            int MAX_SKIP = 3;
             int MAX_COUNT = 100;
             int counter = 0;
             List<geo.Point> points1 = new List<geo.Point>();
             foreach (var d in docs)
             {
                 GPXData dp = (dynamic)d;
-                points1.Add(new geo.Point(new geo.GeographicPosition(dp.SnapPoint.Position.Latitude,dp.SnapPoint.Position.Longitude)));
+                points1.Add(new geo.Point(new geo.GeographicPosition(dp.SnapPoint.Position.Latitude, dp.SnapPoint.Position.Longitude)));
                 //Console.WriteLine(dp);
             }
 
             var multiPoint = new geo.MultiPoint(points1);
+           
             string geoJson = JsonConvert.SerializeObject(multiPoint);
 
 
 
             string s = string.Empty;
-            
+
 
             //foreach (var item in points1)
             //{
@@ -257,9 +259,11 @@
             //s = s.Remove(s.Length - 1, 1);
 
 
-            _sps = Utils.GetSnapedRoad(s);
-
-            List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_162418_data.csv");
+            //_sps = Utils.GetSnapedRoad(s);
+            List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_182743_data.csv");
+            //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_192333_data.csv");
+            //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_205339_data.csv");
+            //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_162418_data.csv");
             //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_163043_data.csv");
             //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_160551_data.csv");
             //List<GPXData> dataPoints =  ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_134919_data.csv");
@@ -284,7 +288,7 @@
                     break;
                 }
             }
-             s1 = s1.Remove(s.Length-1, 1);
+             s1 = s1.Remove(s1.Length-1, 1);
 
 
             _sps = Utils.GetSnapedRoad(s1);
@@ -295,7 +299,7 @@
             foreach (var item in snappedDataPoints)
             {
                 GPXData neareastGpxPoint = GetNeareastGPXDataFromDB(collection, item);
-                if (neareastGpxPoint.RoadCondition == item.RoadCondition) continue;
+                
 
                 if(neareastGpxPoint == null)
                 {
@@ -303,25 +307,24 @@
                     {
                         Document created = await client.CreateDocumentAsync(collection.SelfLink, item);
                         //add this gpx point
-                        Console.WriteLine(created);
+                        Console.WriteLine("CREATED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
                     }
                 }
                 else
                 {
+                    if (neareastGpxPoint.RoadCondition == item.RoadCondition) continue;
                     normalizedGPX = NormalizeGPXPoint(neareastGpxPoint, item);
                     if (normalizedGPX.RoadCondition == RoadType.Good)
                     {
                         var response = await client.DeleteDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id));
                         //delete the record
-                        Console.WriteLine("Request charge of upsert operation: {0}", response.RequestCharge);
-                        Console.WriteLine("StatusCode of operation: {0}", response.StatusCode);
+                        Console.WriteLine("DELETED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
                     }
                     else
                     {
                         var response = await client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id), normalizedGPX);
                         //update this gpx point
-                        Console.WriteLine("Request charge of upsert operation: {0}", response.RequestCharge);
-                        Console.WriteLine("StatusCode of operation: {0}", response.StatusCode);
+                        Console.WriteLine("UPDATED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
                     }
                 }
             }
