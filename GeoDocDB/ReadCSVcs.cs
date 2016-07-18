@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace GeoDocDB
 
             try
             {
+                string tripId = csv_file_path;// Guid.NewGuid().ToString();
+                int seqNumber = 0;
                 using (TextFieldParser csvReader = new TextFieldParser(csv_file_path))
                 {
                     csvReader.SetDelimiters(new string[] { "," });
@@ -33,8 +36,10 @@ namespace GeoDocDB
                     double tempfloat2;
                     while (!csvReader.EndOfData)
                     {
+                        ++seqNumber;
                         dpoint = new GPXData();
-                      
+                        dpoint.SeqNumber = seqNumber;
+                        dpoint.TripID = tripId;
                         string[] fieldData = csvReader.ReadFields();
                         if(double.TryParse(fieldData[0],out tempfloat1) && double.TryParse(fieldData[1], out tempfloat2))
                         {
@@ -66,11 +71,21 @@ namespace GeoDocDB
                         }
 
                         DateTime dt = new DateTime();
-                        if(DateTime.TryParse(fieldData[10],out dt))
+                        if (DateTime.TryParse(fieldData[10], out dt))
                         {
                             dpoint.Time = dt;
                         }
-                        listGPX.Add(dpoint);
+                        else
+                        {
+                            CultureInfo culture = CultureInfo.CreateSpecificCulture("en-IN");
+                            DateTimeStyles styles = DateTimeStyles.None;
+                            if (DateTime.TryParse(fieldData[10], culture, styles, out dt))
+                            {
+                                dpoint.Time = dt;
+                            }
+                        }
+                        if(dpoint.Speed > 0)
+                            listGPX.Add(dpoint);
                     }
                 }
             }

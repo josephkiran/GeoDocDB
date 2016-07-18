@@ -13,6 +13,7 @@
     using Newtonsoft.Json;
     using Newtonsoft.Json.Serialization;
     using geo = GeoJSON.Net.Geometry;
+    using GeoJSON.Net.Feature;
     /// <summary>
     /// This sample demonstrates the use of geospatial indexing and querying with Azure DocumentDB. We 
     /// look at how to store Points using the classes in the Microsoft.Azure.Documents.Spatial namespace,
@@ -75,7 +76,6 @@
         {
             try
             {
-                
                 // Get a Document client
                 using (client = new DocumentClient(new Uri(EndpointUrl), AuthorizationKey))
                 {
@@ -140,7 +140,57 @@
 
         private static GPXData NormalizeGPXPoint(GPXData oldData,GPXData newData)
         {
+            if(newData.TripID == oldData.TripID && newData.Time.Subtract(oldData.Time).Seconds < 2)
+            {
+                return null;
+            }
             newData.Id = oldData.Id;
+            newData.Id = oldData.Id;
+            newData.L0 = oldData.L0;
+            newData.L1 = oldData.L1;
+            newData.L2 = oldData.L2;
+            switch (newData.RoadCondition)
+            {
+                case RoadType.Good:
+                    newData.L0++;
+                    break;
+                case RoadType.SlightyBumpy:
+                    break;
+                case RoadType.Bumpy:
+                    newData.L1++;
+                    break;
+                case RoadType.Worst:
+                    newData.L1++;
+                    break;
+                case RoadType.RandomAction:
+                    break;
+                case RoadType.Idle:
+                    break;
+                default:
+                    break;
+            }
+
+            if((newData.L0 + newData.L1 + newData.L2) > 5)
+            {
+                if(newData.L0 > newData.L1)
+                {
+                    newData.L0 = 2;
+                }
+                else
+                {
+                    newData.L1 = 2;
+                }
+            }
+
+            if(newData.L0 >= newData.L1)
+            {
+                newData.RoadCondition = RoadType.Good;
+            }
+            else
+            {
+                newData.RoadCondition = RoadType.Bumpy;
+            }
+
             //oldData.RoadCondition = newData.RoadCondition;
             //oldData.StdDevPitch = newData.StdDevPitch;
             //oldData.StdDevRoll = newData.StdDevRoll;
@@ -156,7 +206,7 @@
 
             foreach (var item in dps)
             {
-                if (item.StdDevPitch + item.StdDevYaw + item.StdDevRoll > 0.5)
+                if (item.StdDevPitch + item.StdDevYaw + item.StdDevRoll > 0.6)
                 {
                     item.RoadCondition = RoadType.Bumpy;
                 }
@@ -220,47 +270,74 @@
             // Create a new collection, or modify an existing one to enable spatial indexing.
             DocumentCollection collection = await GetCollectionWithSpatialIndexingAsync(database.SelfLink, collectionId);
 
-            //await Cleanup(collection);
-
-            var docs = await client.ReadDocumentFeedAsync(collection.SelfLink, new FeedOptions { MaxItemCount = 500 });
+            ////await Cleanup(collection);
 
             int MAX_SKIP = 3;
             int MAX_COUNT = 100;
             int counter = 0;
-            List<geo.Point> points1 = new List<geo.Point>();
+
+            var docs = await client.ReadDocumentFeedAsync(collection.SelfLink, new FeedOptions { MaxItemCount = 1000 });
+            //foreach (var item in docs)
+            //{
+            //    GPXData dp = (dynamic)item;
+
+            //}
+
+            List<geo.Point> geopoints1 = new List<geo.Point>();
+
+            List<geo.Point> geobadpoints = new List<geo.Point>();
+
+            List<Point> points1 = new List<Point>();
+            List<Point> badpoints = new List<Point>();
+            Feature f;
             foreach (var d in docs)
             {
                 GPXData dp = (dynamic)d;
-                points1.Add(new geo.Point(new geo.GeographicPosition(dp.SnapPoint.Position.Latitude, dp.SnapPoint.Position.Longitude)));
+                geopoints1.Add(new geo.Point(new geo.GeographicPosition(dp.SnapPoint.Position.Latitude, dp.SnapPoint.Position.Longitude)));
+                points1.Add(dp.SnapPoint);
+               //geo.LineString l =  new geo.LineString(dp.StartPoint)
+                //f = new Feature()
+
+
+
+                if(dp.RoadCondition == RoadType.Bumpy)
+                {
+                    geobadpoints.Add(new geo.Point(new geo.GeographicPosition(dp.SnapPoint.Position.Latitude, dp.SnapPoint.Position.Longitude)));
+                    badpoints.Add(dp.SnapPoint);
+                }
                 //Console.WriteLine(dp);
             }
 
-            var multiPoint = new geo.MultiPoint(points1);
-           
-            string geoJson = JsonConvert.SerializeObject(multiPoint);
+            var multiPoint = new geo.MultiPoint(geopoints1);
 
 
+            string geoJsonroute = JsonConvert.SerializeObject(new geo.MultiPoint(geopoints1));
+            string geoJsonBadroute = JsonConvert.SerializeObject(new geo.MultiPoint(geobadpoints));
+
+            
+            //Feature f = new Feature(multiPoint,)
 
             string s = string.Empty;
 
 
-            //foreach (var item in points1)
-            //{
-            //    ++counter;
-            //    if (counter % MAX_SKIP == 0)
-            //    {
-            //        s += item.Position.Latitude + "," + item.Position.Longitude + "|";
-            //    }
-            //    if (counter > MAX_COUNT)
-            //    {
-            //        break;
-            //    }
-            //}
-            //s = s.Remove(s.Length - 1, 1);
+            foreach (var item in points1)
+            {
+                ++counter;
+                if (counter % MAX_SKIP == 0)
+                {
+                    s += item.Position.Latitude + "," + item.Position.Longitude + "|";
+                }
+                if (counter > MAX_COUNT)
+                {
+                    break;
+                }
+            }
+            s = s.Remove(s.Length - 1, 1);
 
 
             //_sps = Utils.GetSnapedRoad(s);
-            List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_182743_data.csv");
+            List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_180418_data.csv"); 
+            //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_120836_data.csv");
             //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_192333_data.csv");
             //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_205339_data.csv");
             //List<GPXData> dataPoints = ReadCSVcs.GetGPXDataFromCSVFile(@"d:\temp\EXCEL_162418_data.csv");
@@ -299,33 +376,58 @@
             foreach (var item in snappedDataPoints)
             {
                 GPXData neareastGpxPoint = GetNeareastGPXDataFromDB(collection, item);
-                
 
-                if(neareastGpxPoint == null)
+                if (neareastGpxPoint == null)
                 {
-                    if(item.RoadCondition != RoadType.Good)
+                    switch (item.RoadCondition)
                     {
-                        Document created = await client.CreateDocumentAsync(collection.SelfLink, item);
-                        //add this gpx point
-                        Console.WriteLine("CREATED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
+                        case RoadType.Good:
+                            item.L0++;
+                            break;
+                        case RoadType.SlightyBumpy:
+                            break;
+                        case RoadType.Bumpy:
+                            item.L1++;
+                            break;
+                        case RoadType.Worst:
+                            item.L1++;
+                            break;
+                        case RoadType.RandomAction:
+                            break;
+                        case RoadType.Idle:
+                            break;
+                        default:
+                            break;
                     }
+                    Document created = await client.CreateDocumentAsync(collection.SelfLink, item);
+                    //add this gpx point
+                    Console.WriteLine("CREATED - Condition:{0} L0:{1} L1:{2} ", item.RoadCondition.ToString(), item.L0.ToString(), item.L1.ToString());
                 }
                 else
                 {
-                    if (neareastGpxPoint.RoadCondition == item.RoadCondition) continue;
+                    //if (neareastGpxPoint.RoadCondition == item.RoadCondition) continue;
                     normalizedGPX = NormalizeGPXPoint(neareastGpxPoint, item);
-                    if (normalizedGPX.RoadCondition == RoadType.Good)
+                    if(normalizedGPX == null)
                     {
-                        var response = await client.DeleteDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id));
-                        //delete the record
-                        Console.WriteLine("DELETED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
+                        Console.WriteLine("SKIP as same trip" + item.TripID);
+                        continue;
                     }
-                    else
-                    {
-                        var response = await client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id), normalizedGPX);
-                        //update this gpx point
-                        Console.WriteLine("UPDATED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
-                    }
+                    var response = await client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id), normalizedGPX);
+                    //update this gpx point
+                    Console.WriteLine("UPDATED - Condition:{0} L0:{1} L1:{2} ", item.RoadCondition.ToString(), item.L0.ToString(), item.L1.ToString());
+
+                    //if (normalizedGPX.RoadCondition == RoadType.Good)
+                    //{
+                    //    var response = await client.DeleteDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id));
+                    //    //delete the record
+                    //    Console.WriteLine("DELETED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
+                    //}
+                    //else
+                    //{
+                    //    var response = await client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(databaseId, collectionId, normalizedGPX.Id), normalizedGPX);
+                    //    //update this gpx point
+                    //    Console.WriteLine("UPDATED - " + item.RoadCondition.ToString() + " - " + item.SnapPoint.Position.Latitude.ToString() + "," + item.SnapPoint.Position.Longitude.ToString());
+                    //}
                 }
             }
 

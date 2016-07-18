@@ -48,6 +48,17 @@ namespace GeoDocDB
         [JsonProperty("time")]
         public DateTime Time { get; set; }
 
+        public int SeqNumber { get; set; }
+
+        public string TripID { get; set; }
+
+        public int L0 { get; set; }
+
+        public int L1 { get; set; }
+
+        public int L2 { get; set; }
+
+
         public override string ToString()
         {
             return JsonConvert.SerializeObject(this, Formatting.None);
